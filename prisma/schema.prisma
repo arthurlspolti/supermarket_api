@@ -1,0 +1,65 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model Class {
+  id_class    Int           @id @default(autoincrement())
+  name_class  String
+  id_shelf    Int?
+  Shelf       Shelf?        @relation(fields: [id_shelf], references: [id_shelf], onDelete: NoAction, onUpdate: NoAction, map: "fk_class_shelf")
+  ClassSelect ClassSelect[]
+  Products    Products[]
+  Promotion   Promotion[]
+
+  @@index([id_shelf], map: "fk_class_shelf")
+}
+
+model ClassSelect {
+  id_class_sel Int   @id @default(autoincrement())
+  id_user      Int
+  id_class     Int
+  Class        Class @relation(fields: [id_class], references: [id_class])
+  Users        Users @relation(fields: [id_user], references: [id_user])
+
+  @@index([id_class], map: "ClassSelect_id_class_fkey")
+  @@index([id_user], map: "ClassSelect_id_user_fkey")
+}
+
+model Products {
+  id_products   Int     @id
+  name_products String? @db.VarChar(255)
+  id_class      Int?
+  Class         Class?  @relation(fields: [id_class], references: [id_class], onDelete: NoAction, onUpdate: NoAction, map: "Products_ibfk_1")
+
+  @@index([id_class], map: "id_class")
+}
+
+model Promotion {
+  id_promo  Int     @id @default(autoincrement())
+  name_prod String
+  id_class  Int
+  price     Decimal @db.Decimal(65, 2)
+  brand     String
+  Class     Class   @relation(fields: [id_class], references: [id_class])
+
+  @@index([id_class], map: "Promotion_id_class_fkey")
+}
+
+model Shelf {
+  id_shelf   Int     @id @default(autoincrement())
+  name_shelf String  @db.VarChar(255)
+  Class      Class[]
+}
+
+model Users {
+  id_user     Int           @id @default(autoincrement())
+  name_user   String
+  email_user  String        @unique(map: "users_email_user_key")
+  senha_user  String
+  ClassSelect ClassSelect[]
+}
