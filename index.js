@@ -166,6 +166,75 @@ app.get("/products", async (req, res) => {
 
   res.json(products);
 });
+
+app.post("/register", async (req, res) => {
+  const { name, email, password } = req.body;
+
+  if (!name || !email || !password) {
+    res.status(400).send("Os campos name, email e password são obrigatórios");
+    return;
+  }
+
+  // Verificar se o email já existe
+  const existingUser = await prisma.users.findUnique({
+    where: {
+      email_user: email,
+    },
+  });
+
+  if (existingUser) {
+    res.status(400).send("Já existe um usuário com este email");
+    return;
+  }
+
+  let newUser;
+  try {
+    newUser = await prisma.users.create({
+      data: {
+        name_user: name,
+        email_user: email,
+        senha_user: password,
+      },
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).send("Erro ao criar usuário");
+    return;
+  }
+
+  res.status(201).json(newUser);
+});
+
+app.post("/login", async (req, res) => {
+  const { email, password } = req.body;
+
+  if (!email || !password) {
+    res.status(400).send("Os campos email e password são obrigatórios");
+    return;
+  }
+
+  let user;
+  try {
+    user = await prisma.users.findFirst({
+      where: {
+        email_user: email,
+        senha_user: password,
+      },
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).send("Erro ao buscar usuário");
+    return;
+  }
+
+  if (!user) {
+    res.status(401).send("Email ou senha inválidos");
+    return;
+  }
+
+  res.status(200).send("Login bem-sucedido!");
+});
+
 // Iniciar o servidor
 app.listen(3000, () =>
   console.log("Servidor rodando na porta 3000, no http://localhost:3000")
