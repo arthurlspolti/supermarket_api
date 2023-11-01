@@ -1,4 +1,5 @@
 const express = require("express");
+const bcrypt = require("bcrypt");
 const { PrismaClient } = require("@prisma/client");
 
 const prisma = new PrismaClient();
@@ -168,6 +169,7 @@ app.get("/products", async (req, res) => {
 });
 
 app.post("/register", async (req, res) => {
+  const saltRounds = 10;
   const { name, email, password } = req.body;
 
   if (!name || !email || !password) {
@@ -187,13 +189,16 @@ app.post("/register", async (req, res) => {
     return;
   }
 
+  // Criptografar a senha
+  const hashedPassword = await bcrypt.hash(password, saltRounds);
+
   let newUser;
   try {
     newUser = await prisma.users.create({
       data: {
         name_user: name,
         email_user: email,
-        senha_user: password,
+        senha_user: hashedPassword,
       },
     });
   } catch (error) {
@@ -215,10 +220,9 @@ app.post("/login", async (req, res) => {
 
   let user;
   try {
-    user = await prisma.users.findFirst({
+    user = await prisma.users.findUnique({
       where: {
         email_user: email,
-        senha_user: password,
       },
     });
   } catch (error) {
@@ -228,6 +232,13 @@ app.post("/login", async (req, res) => {
   }
 
   if (!user) {
+    res.status(401).send("Email ou senha inválidos");
+    return;
+  }
+
+  // Comparar a senha fornecida com a senha criptografada
+  const isPasswordValid = await bcrypt.compare(password, user.senha_user);
+  if (!isPasswordValid) {
     res.status(401).send("Email ou senha inválidos");
     return;
   }
