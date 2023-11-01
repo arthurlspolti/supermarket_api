@@ -31,10 +31,13 @@ model ClassSelect {
 }
 
 model Products {
-  id_products   Int     @id
-  name_products String? @db.VarChar(255)
+  id_products   Int      @id
+  name_products String?  @db.VarChar(255)
   id_class      Int?
-  Class         Class?  @relation(fields: [id_class], references: [id_class], onDelete: NoAction, onUpdate: NoAction, map: "Products_ibfk_1")
+  preco_padr    Float?   @db.Float
+  porcent_desc  Decimal? @db.Decimal(5, 2)
+  url_img       String?  @db.VarChar(255)
+  Class         Class?   @relation(fields: [id_class], references: [id_class], onDelete: NoAction, onUpdate: NoAction, map: "Products_ibfk_1")
 
   @@index([id_class], map: "id_class")
 }

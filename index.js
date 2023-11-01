@@ -121,11 +121,7 @@ app.get("/classes/promocoes", async (req, res) => {
 app.get("/classes", async (req, res) => {
   let categories;
   try {
-    categories = await prisma.class.findMany({
-      select: {
-        name_class: true,
-      },
-    });
+    categories = await prisma.class.findMany();
   } catch (error) {
     console.error(error);
     res.status(500).send("Erro ao buscar categorias");
@@ -148,14 +144,14 @@ app.get("/products", async (req, res) => {
             in: classIds,
           },
         },
-        select: {
-          name_products: true,
+        orderBy: {
+          name_products: "asc",
         },
       });
     } else {
       products = await prisma.products.findMany({
-        select: {
-          name_products: true,
+        orderBy: {
+          name_products: "asc",
         },
       });
     }
