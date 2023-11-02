@@ -121,7 +121,11 @@ app.get("/classes/promocoes", async (req, res) => {
 app.get("/classes", async (req, res) => {
   let categories;
   try {
-    categories = await prisma.class.findMany();
+    categories = await prisma.class.findMany({
+      orderBy: {
+        name_class: "asc",
+      },
+    });
   } catch (error) {
     console.error(error);
     res.status(500).send("Erro ao buscar categorias");
