@@ -135,12 +135,16 @@ app.get("/classes", async (req, res) => {
   res.json(categories);
 });
 
+// Rota GET para "/products"
 app.get("/products", async (req, res) => {
+  // Extrai o parâmetro de consulta "classes" da requisição
   const { classes } = req.query;
+  // Converte o parâmetro "classes" em um array de números, ou um array vazio se "classes" não estiver definido
   const classIds = classes ? classes.split(",").map(Number) : [];
 
   let products;
   try {
+    // Se "classIds" não estiver vazio, busca produtos que pertencem às classes especificadas
     if (classIds.length > 0) {
       products = await prisma.products.findMany({
         where: {
@@ -153,6 +157,7 @@ app.get("/products", async (req, res) => {
         },
       });
     } else {
+      // Se "classIds" estiver vazio, busca todos os produtos
       products = await prisma.products.findMany({
         orderBy: {
           name_products: "asc",
@@ -160,11 +165,13 @@ app.get("/products", async (req, res) => {
       });
     }
   } catch (error) {
+    // Em caso de erro, registra o erro e retorna uma resposta com status 500
     console.error(error);
     res.status(500).send("Erro ao buscar produtos");
     return;
   }
 
+  // Retorna os produtos encontrados como um JSON
   res.json(products);
 });
 
