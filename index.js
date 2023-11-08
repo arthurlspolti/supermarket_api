@@ -264,7 +264,7 @@ app.post("/shopping-list", async (req, res) => {
         id: item.id,
       },
       include: {
-        class: true,
+        Class: true,
       },
     });
     const corridor = product.class.Productscol;
@@ -274,13 +274,13 @@ app.post("/shopping-list", async (req, res) => {
         promotions: [],
       };
     }
-    corridors[corridor].products.push(product.name_products);
+    corridors[corridor].products.push(product.name);
   }
 
   //Buscar produtos em promoção
   for (let corridor in corridors) {
     const promotions = await prisma.promotion.findMany({
-      where: { class: Number(corridor) },
+      where: { id_class: Number(corridor) },
     });
 
     corridors[corridor].promotions = promotions.map((p) => p.name_prod);
