@@ -253,6 +253,42 @@ app.post("/login", async (req, res) => {
   res.status(200).send("Login bem-sucedido!");
 });
 
+app.post("/shopping-list", async (req, res) => {
+  const shoppingList = req.body;
+  let corridors = {};
+
+  //Agrupar produtos por corredor
+  for (let item of shoppingList) {
+    const product = await prisma.products.findUnique({
+      where: {
+        id: item.id,
+      },
+      include: {
+        class: true,
+      },
+    });
+    const corridor = product.class.Productscol;
+    if (!corridors[corridor]) {
+      corridors[corridor] = {
+        products: [],
+        promotions: [],
+      };
+    }
+    corridors[corridor].products.push(product.name_products);
+  }
+
+  //Buscar produtos em promoção
+  for (let corridor in corridors) {
+    const promotions = await prisma.promotion.findMany({
+      where: { class: Number(corridor) },
+    });
+
+    corridors[corridor].promotions = promotions.map((p) => p.name_prod);
+  }
+
+  res.json(corridors);
+});
+
 // Iniciar o servidor
 app.listen(3000, () =>
   console.log("Servidor rodando na porta 3000, no http://localhost:3000")

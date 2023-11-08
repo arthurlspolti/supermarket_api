@@ -37,7 +37,6 @@ model Products {
   preco__      Float?   @map("preco\u001f\u001f") @db.Float
   porcent_desc Decimal? @db.Decimal(5, 2)
   url_img      String?  @db.VarChar(255)
-  Productscol  String?  @db.VarChar(45)
   Class        Class?   @relation(fields: [class], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "Products_ibfk_1")
 
   @@index([class], map: "Products_ibfk_1")
