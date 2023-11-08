@@ -148,19 +148,19 @@ app.get("/products", async (req, res) => {
     if (classIds.length > 0) {
       products = await prisma.products.findMany({
         where: {
-          id_class: {
+          class: {
             in: classIds,
           },
         },
         orderBy: {
-          name_products: "asc",
+          name: "asc",
         },
       });
     } else {
       // Se "classIds" estiver vazio, busca todos os produtos
       products = await prisma.products.findMany({
         orderBy: {
-          name_products: "asc",
+          name: "asc",
         },
       });
     }
