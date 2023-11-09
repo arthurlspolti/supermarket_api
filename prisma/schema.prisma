@@ -31,12 +31,6 @@ model Products {
   @@index([category], map: "Products_ibfk_1")
 }
 
-model Shelf {
-  id       Int        @id @default(autoincrement())
-  name     String     @db.VarChar(255)
-  Category Category[]
-}
-
 model Users {
   id          Int           @id @default(autoincrement())
   name        String
@@ -46,12 +40,9 @@ model Users {
 }
 
 model Category {
-  id          Int           @id @default(autoincrement())
-  name        String
-  aisle       Int?
-  Shelf       Shelf?        @relation(fields: [aisle], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_class_shelf")
-  ClassSelect ClassSelect[]
-  Products    Products[]
-
-  @@index([aisle], map: "fk_class_shelf")
+  id           Int           @id @default(autoincrement())
+  name         String
+  localization Int
+  ClassSelect  ClassSelect[]
+  Products     Products[]
 }
