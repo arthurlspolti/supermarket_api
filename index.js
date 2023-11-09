@@ -144,9 +144,36 @@ app.post("/login", async (req, res) => {
   res.status(200).send("Login bem-sucedido!");
 });
 
-app.post("/shopping-list", async (req, res) => {
-  const shoppingList = req.body;
-  let corredors = [];
+// Rota para agrupar produtos por categoria
+app.post("/api/agrupar-por-categoria", async (req, res) => {
+  try {
+    // Obtendo a lista de IDs dos produtos do corpo da requisição
+    const { productIds } = req.body;
+
+    // Consultando os produtos com base nos IDs fornecidos
+    const produtos = await prisma.products.findMany({
+      where: {
+        id: {
+          in: productIds,
+        },
+      },
+    });
+
+    // Agrupando os produtos por categoria
+    const produtosAgrupados = produtos.reduce((agrupados, produto) => {
+      const categoriaId = produto.category || 0; // 0 para produtos sem categoria
+      if (!agrupados[categoriaId]) {
+        agrupados[categoriaId] = [];
+      }
+      agrupados[categoriaId].push(produto);
+      return agrupados;
+    }, {});
+
+    res.json(produtosAgrupados);
+  } catch (error) {
+    console.error("Erro ao agrupar produtos por categoria:", error);
+    res.status(500).json({ error: "Erro interno do servidor" });
+  }
 });
 
 // Iniciar o servidor
