@@ -25,7 +25,6 @@ model Products {
   base_price          Decimal?  @db.Decimal(5, 2)
   discount_percentage Decimal?  @db.Decimal(5, 2)
   image_url           String?   @db.VarChar(255)
-  aisle               Int
   Category            Category? @relation(fields: [category], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "Products_ibfk_1")
 
   @@index([category], map: "Products_ibfk_1")
