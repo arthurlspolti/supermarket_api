@@ -10,7 +10,7 @@ app.use(express.json());
 app.get("/classes", async (req, res) => {
   let categories;
   try {
-    categories = await prisma.class.findMany({
+    categories = await prisma.Category.findMany({
       orderBy: {
         name: "asc",
       },
@@ -64,7 +64,24 @@ app.get("/products", async (req, res) => {
   res.json(products);
 });
 
-app.get("/promotions", async (req, res) => {});
+app.get("/promotions", async (req, res) => {
+  let promotions;
+  try {
+    promotions = await prisma.Products.findMany({
+      where: {
+        discount_percentage: {
+          gt: 0,
+        },
+      },
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).send("Erro ao buscar promocões");
+    return;
+  }
+
+  res.json(promotions);
+});
 
 app.post("/register", async (req, res) => {
   const saltRounds = 10;

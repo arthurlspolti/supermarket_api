@@ -7,44 +7,34 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-model Class {
-  id          Int           @id @default(autoincrement())
-  name        String
-  shelf       Int?
-  Shelf       Shelf?        @relation(fields: [shelf], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_class_shelf")
-  ClassSelect ClassSelect[]
-  Products    Products[]
-
-  @@index([shelf], map: "fk_class_shelf")
-}
-
 model ClassSelect {
-  id    Int   @id @default(autoincrement())
+  id    Int      @id @default(autoincrement())
   user  Int
   class Int
-  Class Class @relation(fields: [class], references: [id], map: "ClassSelect_id_class_fkey")
-  Users Users @relation(fields: [user], references: [id], map: "ClassSelect_id_user_fkey")
+  Class Category @relation(fields: [class], references: [id], map: "ClassSelect_id_class_fkey")
+  Users Users    @relation(fields: [user], references: [id], map: "ClassSelect_id_user_fkey")
 
   @@index([class], map: "ClassSelect_id_class_fkey")
   @@index([user], map: "ClassSelect_id_user_fkey")
 }
 
 model Products {
-  id           Int      @id
-  name         String?  @db.VarChar(255)
-  class        Int?
-  preco__      Decimal? @map("preco\u001f\u001f") @db.Decimal(5, 2)
-  porcent_desc Decimal? @db.Decimal(5, 2)
-  url_img      String?  @db.VarChar(255)
-  Class        Class?   @relation(fields: [class], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "Products_ibfk_1")
+  id                  Int       @id
+  name                String?   @db.VarChar(255)
+  category            Int?
+  base_price          Decimal?  @db.Decimal(5, 2)
+  discount_percentage Decimal?  @db.Decimal(5, 2)
+  image_url           String?   @db.VarChar(255)
+  aisle               Int
+  Category            Category? @relation(fields: [category], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "Products_ibfk_1")
 
-  @@index([class], map: "Products_ibfk_1")
+  @@index([category], map: "Products_ibfk_1")
 }
 
 model Shelf {
-  id    Int     @id @default(autoincrement())
-  name  String  @db.VarChar(255)
-  Class Class[]
+  id       Int        @id @default(autoincrement())
+  name     String     @db.VarChar(255)
+  Category Category[]
 }
 
 model Users {
@@ -53,4 +43,15 @@ model Users {
   email       String        @unique(map: "users_email_user_key")
   password    String
   ClassSelect ClassSelect[]
+}
+
+model Category {
+  id          Int           @id @default(autoincrement())
+  name        String
+  aisle       Int?
+  Shelf       Shelf?        @relation(fields: [aisle], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_class_shelf")
+  ClassSelect ClassSelect[]
+  Products    Products[]
+
+  @@index([aisle], map: "fk_class_shelf")
 }
