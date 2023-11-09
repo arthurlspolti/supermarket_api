@@ -9,32 +9,31 @@ datasource db {
 
 model Class {
   id          Int           @id @default(autoincrement())
-  name_class  String
-  id_shelf    Int?
-  Shelf       Shelf?        @relation(fields: [id_shelf], references: [id_shelf], onDelete: NoAction, onUpdate: NoAction, map: "fk_class_shelf")
+  name        String
+  shelf       Int?
+  Shelf       Shelf?        @relation(fields: [shelf], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_class_shelf")
   ClassSelect ClassSelect[]
   Products    Products[]
-  Promotion   Promotion[]
 
-  @@index([id_shelf], map: "fk_class_shelf")
+  @@index([shelf], map: "fk_class_shelf")
 }
 
 model ClassSelect {
-  id_class_sel Int   @id @default(autoincrement())
-  id_user      Int
-  id_class     Int
-  Class        Class @relation(fields: [id_class], references: [id])
-  Users        Users @relation(fields: [id_user], references: [id_user])
+  id    Int   @id @default(autoincrement())
+  user  Int
+  class Int
+  Class Class @relation(fields: [class], references: [id], map: "ClassSelect_id_class_fkey")
+  Users Users @relation(fields: [user], references: [id], map: "ClassSelect_id_user_fkey")
 
-  @@index([id_class], map: "ClassSelect_id_class_fkey")
-  @@index([id_user], map: "ClassSelect_id_user_fkey")
+  @@index([class], map: "ClassSelect_id_class_fkey")
+  @@index([user], map: "ClassSelect_id_user_fkey")
 }
 
 model Products {
   id           Int      @id
   name         String?  @db.VarChar(255)
   class        Int?
-  preco__      Float?   @map("preco\u001f\u001f") @db.Float
+  preco__      Decimal? @map("preco\u001f\u001f") @db.Decimal(5, 2)
   porcent_desc Decimal? @db.Decimal(5, 2)
   url_img      String?  @db.VarChar(255)
   Class        Class?   @relation(fields: [class], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "Products_ibfk_1")
@@ -42,27 +41,16 @@ model Products {
   @@index([class], map: "Products_ibfk_1")
 }
 
-model Promotion {
-  id_promo  Int     @id @default(autoincrement())
-  name_prod String
-  id_class  Int
-  price     Decimal @db.Decimal(65, 2)
-  brand     String
-  Class     Class   @relation(fields: [id_class], references: [id])
-
-  @@index([id_class], map: "Promotion_id_class_fkey")
-}
-
 model Shelf {
-  id_shelf   Int     @id @default(autoincrement())
-  name_shelf String  @db.VarChar(255)
-  Class      Class[]
+  id    Int     @id @default(autoincrement())
+  name  String  @db.VarChar(255)
+  Class Class[]
 }
 
 model Users {
-  id_user     Int           @id @default(autoincrement())
-  name_user   String
-  email_user  String        @unique(map: "users_email_user_key")
-  senha_user  String
+  id          Int           @id @default(autoincrement())
+  name        String
+  email       String        @unique(map: "users_email_user_key")
+  password    String
   ClassSelect ClassSelect[]
 }
