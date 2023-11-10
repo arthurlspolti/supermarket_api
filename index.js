@@ -161,9 +161,73 @@ app.post("/login", async (req, res) => {
   res.status(200).send("Login bem-sucedido!");
 });
 
-app.post("/shopping-list", async (req, res) => {
-  const shoppingList = req.body;
-  let corredors = [];
+app.post("/shoppingroutes", async (req, res) => {
+  try {
+    const productIds = req.body;
+    const products = await prisma.products.findMany({
+      where: {
+        id: {
+          in: productIds,
+        },
+      },
+      include: {
+        Category: true,
+      },
+    });
+
+    if (!products.length) {
+      return res
+        .status(404)
+        .json({ error: "Nenhum produto achado para seus IDs" });
+    }
+
+    let additionalProducts = [];
+    for (let id of productIds) {
+      const product = products.find((product) => product.id === id);
+      if (product && product.Category) {
+        const promoProducts = await prisma.products.findMany({
+          where: {
+            Category: {
+              id: product.Category.id,
+              localization: product.Category.localization,
+            },
+            discount_percentage: {
+              gt: 0,
+            },
+            id: {
+              notIn: productIds,
+            },
+          },
+          include: {
+            Category: true,
+          },
+        });
+        additionalProducts = [...additionalProducts, ...promoProducts];
+      }
+    }
+
+    const allProducts = [...products, ...additionalProducts];
+
+    const groupedProducts = allProducts.reduce((grouped, product) => {
+      const key = product.Category
+        ? `Categoria ${product.Category.id} - Corredor ${product.Category.localization}`
+        : "Sem categoria";
+      if (!grouped[key]) {
+        grouped[key] = { selecionado: [], promoção: [] };
+      }
+      if (productIds.includes(product.id)) {
+        grouped[key].selecionado.push(product);
+      } else {
+        grouped[key].promoção.push(product);
+      }
+      return grouped;
+    }, {});
+
+    res.json(groupedProducts);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: "Um erro ocorreu durante o seu request." });
+  }
 });
 
 // Iniciar o servidor
