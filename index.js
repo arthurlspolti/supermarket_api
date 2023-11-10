@@ -161,9 +161,13 @@ app.post("/login", async (req, res) => {
   res.status(200).send("Login bem-sucedido!");
 });
 
+// Definindo uma rota POST em '/shoppingroutes'
 app.post("/shoppingroutes", async (req, res) => {
   try {
+    // Pegando os IDs dos produtos do corpo da requisição
     const productIds = req.body;
+    // Buscando os produtos do banco de dados usando Prisma
+    // Isso inclui a categoria de cada produto
     const products = await prisma.products.findMany({
       where: {
         id: {
@@ -175,16 +179,22 @@ app.post("/shoppingroutes", async (req, res) => {
       },
     });
 
+    // Se nenhum produto for encontrado, retorna um erro 404
     if (!products.length) {
       return res
         .status(404)
         .json({ error: "Nenhum produto achado para seus IDs" });
     }
 
+    // Inicializando um array para armazenar os produtos adicionais
     let additionalProducts = [];
+    // Para cada ID no corpo da requisição
     for (let id of productIds) {
+      // Encontrando o produto correspondente
       const product = products.find((product) => product.id === id);
+      // Se o produto existir e tiver uma categoria
       if (product && product.Category) {
+        // Buscando os produtos em promoção que estão na mesma categoria e localização
         const promoProducts = await prisma.products.findMany({
           where: {
             Category: {
@@ -202,29 +212,38 @@ app.post("/shoppingroutes", async (req, res) => {
             Category: true,
           },
         });
+        // Adicionando os produtos em promoção ao array de produtos adicionais
         additionalProducts = [...additionalProducts, ...promoProducts];
       }
     }
 
+    // Combinando os produtos selecionados e os produtos adicionais
     const allProducts = [...products, ...additionalProducts];
 
+    // Agrupando os produtos por categoria e localização
     const groupedProducts = allProducts.reduce((grouped, product) => {
+      // Criando a chave para o agrupamento
       const key = product.Category
         ? `Categoria ${product.Category.id} - Corredor ${product.Category.localization}`
         : "Sem categoria";
+      // Se a chave ainda não existir no objeto agrupado, cria um novo objeto para ela
       if (!grouped[key]) {
         grouped[key] = { selecionado: [], promoção: [] };
       }
+      // Se o produto estiver entre os produtos selecionados, adiciona ao grupo 'selecionado'
       if (productIds.includes(product.id)) {
         grouped[key].selecionado.push(product);
       } else {
+        // Caso contrário, adiciona ao grupo 'promoção'
         grouped[key].promoção.push(product);
       }
       return grouped;
     }, {});
 
+    // Enviando os produtos agrupados como resposta
     res.json(groupedProducts);
   } catch (error) {
+    // Se ocorrer um erro, registra o erro no console e envia uma mensagem de erro genérica
     console.error(error);
     res.status(500).json({ error: "Um erro ocorreu durante o seu request." });
   }
