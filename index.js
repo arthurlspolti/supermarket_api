@@ -1,73 +1,50 @@
 const express = require("express");
 const bcrypt = require("bcryptjs");
 const { PrismaClient } = require("@prisma/client");
-
 const prisma = new PrismaClient();
 const app = express();
-
 app.use(express.json());
 
-app.get("/classes", async (req, res) => {
-  let categories;
+// Função para buscar categorias
+const buscarCategorias = async (prisma) => {
   try {
-    categories = await prisma.Category.findMany({
+    return await prisma.Category.findMany({
       orderBy: {
         name: "asc",
       },
     });
   } catch (error) {
     console.error(error);
-    res.status(500).send("Erro ao buscar categorias");
-    return;
+    throw new Error("Erro ao buscar categorias");
   }
+};
 
-  res.json(categories);
-});
-
-// Rota GET para "/products"
-app.get("/products", async (req, res) => {
-  // Extrai o parâmetro de consulta "classes" da requisição
-  const { classes } = req.query;
-  // Converte o parâmetro "classes" em um array de números, ou um array vazio se "classes" não estiver definido
-  const classIds = classes ? classes.split(",").map(Number) : [];
-
-  let products;
-  try {
-    // Se "classIds" não estiver vazio, busca produtos que pertencem às classes especificadas
-    if (classIds.length > 0) {
-      products = await prisma.products.findMany({
-        where: {
-          category: {
-            in: classIds,
-          },
+// Função para buscar produtos
+const buscarProdutos = async (prisma, idsClasses) => {
+  if (idsClasses.length > 0) {
+    return await prisma.products.findMany({
+      where: {
+        category: {
+          in: idsClasses,
         },
-        orderBy: {
-          name: "asc",
-        },
-      });
-    } else {
-      // Se "classIds" estiver vazio, busca todos os produtos
-      products = await prisma.products.findMany({
-        orderBy: {
-          name: "asc",
-        },
-      });
-    }
-  } catch (error) {
-    // Em caso de erro, registra o erro e retorna uma resposta com status 500
-    console.error(error);
-    res.status(500).send("Erro ao buscar produtos");
-    return;
+      },
+      orderBy: {
+        name: "asc",
+      },
+    });
+  } else {
+    return await prisma.products.findMany({
+      orderBy: {
+        name: "asc",
+      },
+    });
   }
+};
 
-  // Retorna os produtos encontrados como um JSON
-  res.json(products);
-});
-
-app.get("/promotions", async (req, res) => {
-  let promotions;
+// Função para buscar promoções
+const buscarPromocoes = async (prisma) => {
   try {
-    promotions = await prisma.Products.findMany({
+    return await prisma.Products.findMany({
       where: {
         discount_percentage: {
           gt: 0,
@@ -76,176 +53,243 @@ app.get("/promotions", async (req, res) => {
     });
   } catch (error) {
     console.error(error);
-    res.status(500).send("Erro ao buscar promocões");
-    return;
+    throw new Error("Erro ao buscar promoções");
   }
+};
 
-  res.json(promotions);
-});
+// Função para buscar produtos
+const buscarGrupos = async (prisma, idsProdutos) => {
+  return await prisma.products.findMany({
+    where: {
+      id: {
+        in: idsProdutos,
+      },
+    },
+    include: {
+      Category: true,
+    },
+  });
+};
 
-app.post("/register", async (req, res) => {
-  const saltRounds = 10;
-  const { name, email, password } = req.body;
+// Função para buscar produtos em promoção
+const buscarProdutosPromocao = async (prisma, produto, idsProdutos) => {
+  return await prisma.products.findMany({
+    where: {
+      Category: {
+        id: produto.Category.id,
+        localization: produto.Category.localization,
+      },
+      discount_percentage: {
+        gt: 0,
+      },
+      id: {
+        notIn: idsProdutos,
+      },
+    },
+    include: {
+      Category: true,
+    },
+  });
+};
 
-  if (!name || !email || !password) {
-    res.status(400).send("Os campos name, email e password são obrigatórios");
-    return;
+// Função para buscar produtos adicionais
+const buscarProdutosAdicionais = async (prisma, produtos, idsProdutos) => {
+  let produtosAdicionais = [];
+  for (let id of idsProdutos) {
+    const produto = produtos.find((produto) => produto.id === id);
+    if (produto && produto.Category) {
+      const produtosPromocao = await buscarProdutosPromocao(
+        prisma,
+        produto,
+        idsProdutos
+      );
+      produtosAdicionais = [...produtosAdicionais, ...produtosPromocao];
+    }
   }
+  return produtosAdicionais;
+};
 
-  // Verificar se o email já existe
-  const existingUser = await prisma.users.findUnique({
+// Função para agrupar produtos
+const agruparProdutos = (todosProdutos, idsProdutos) => {
+  return todosProdutos.reduce((agrupados, produto) => {
+    const chave = produto.Category
+      ? `Categoria ${produto.Category.id} - Corredor ${produto.Category.localization}`
+      : "Sem categoria";
+    if (!agrupados[chave]) {
+      agrupados[chave] = { selecionado: [], promoção: [] };
+    }
+    if (idsProdutos.includes(produto.id)) {
+      agrupados[chave].selecionado.push(produto);
+    } else {
+      agrupados[chave].promoção.push(produto);
+    }
+    return agrupados;
+  }, {});
+};
+
+// Função para verificar se os campos obrigatórios estão presentes
+const verificarCamposObrigatorios = (nome, email, senha) => {
+  if (!nome || !email || !senha) {
+    throw new Error("Os campos nome, email e senha são obrigatórios");
+  }
+};
+
+// Função para verificar se o usuário já existe
+const verificarUsuarioExistente = async (prisma, email) => {
+  const usuarioExistente = await prisma.users.findUnique({
     where: {
       email: email,
     },
   });
 
-  if (existingUser) {
-    res.status(400).send("Já existe um usuário com este email");
-    return;
+  if (usuarioExistente) {
+    throw new Error("Já existe um usuário com este email");
+  }
+};
+
+// Função para criptografar a senha
+const criptografarSenha = async (senha, rodadasSalt) => {
+  return await bcrypt.hash(senha, rodadasSalt);
+};
+
+// Função para criar um novo usuário
+const criarNovoUsuario = async (prisma, nome, email, senhaCriptografada) => {
+  return await prisma.users.create({
+    data: {
+      name: nome,
+      email: email,
+      password: senhaCriptografada,
+    },
+  });
+};
+
+// Função para verificar se os campos obrigatórios estão presentes
+const verificarCamposObrigatoriosLogin = (email, senha) => {
+  if (!email || !senha) {
+    throw new Error("Os campos email e senha são obrigatórios");
+  }
+};
+
+// Função para buscar usuário
+const buscarUsuario = async (prisma, email) => {
+  const usuario = await prisma.users.findUnique({
+    where: {
+      email: email,
+    },
+  });
+
+  if (!usuario) {
+    throw new Error("Email ou senha inválidos");
   }
 
-  // Criptografar a senha
-  const hashedPassword = await bcrypt.hash(password, saltRounds);
+  return usuario;
+};
 
-  let newUser;
+// Função para validar senha
+const validarSenha = async (senha, senhaCriptografada) => {
+  const senhaValida = await bcrypt.compare(senha, senhaCriptografada);
+
+  if (!senhaValida) {
+    throw new Error("Email ou senha inválidos");
+  }
+};
+
+// Rota para puxar todas as classes do banco
+app.get("/classes", async (req, res) => {
   try {
-    newUser = await prisma.users.create({
-      data: {
-        name: name,
-        email: email,
-        password: hashedPassword,
-      },
-    });
+    const categorias = await buscarCategorias(prisma);
+    res.json(categorias);
   } catch (error) {
-    console.error(error);
-    res.status(500).send("Erro ao criar usuário");
-    return;
+    res.status(500).send(error.message);
   }
-
-  res.status(201).json(newUser);
 });
 
-app.post("/login", async (req, res) => {
-  const { email, password } = req.body;
+// Rota para mostrar todos os produtos do banco
+app.get("/products", async (req, res) => {
+  const { classes } = req.query;
+  const idsClasses = classes ? classes.split(",").map(Number) : [];
 
-  if (!email || !password) {
-    res.status(400).send("Os campos email e password são obrigatórios");
-    return;
-  }
-
-  let user;
   try {
-    user = await prisma.users.findUnique({
-      where: {
-        email: email,
-      },
-    });
+    const produtos = await buscarProdutos(prisma, idsClasses);
+    res.json(produtos);
   } catch (error) {
     console.error(error);
-    res.status(500).send("Erro ao buscar usuário");
-    return;
+    res.status(500).send("Erro ao buscar produtos");
   }
-
-  if (!user) {
-    res.status(401).send("Email ou senha inválidos");
-    return;
-  }
-
-  // Comparar a senha fornecida com a senha criptografada
-  const isPasswordValid = await bcrypt.compare(password, user.password);
-  if (!isPasswordValid) {
-    res.status(401).send("Email ou senha inválidos");
-    return;
-  }
-
-  res.status(200).send("Login bem-sucedido!");
 });
 
-// Definindo uma rota POST em '/shoppingroutes'
+// Rota para mostrar todos os produtos com promoção no banco
+app.get("/promotions", async (req, res) => {
+  try {
+    const promocoes = await buscarPromocoes(prisma);
+    res.json(promocoes);
+  } catch (error) {
+    console.error(error);
+    res.status(500).send(error.message);
+  }
+});
+
+// Rota para mostrar os produtos agrupados por corredores
 app.post("/shoppingroutes", async (req, res) => {
   try {
-    // Pegando os IDs dos produtos do corpo da requisição
-    const productIds = req.body;
-    // Buscando os produtos do banco de dados usando Prisma
-    // Isso inclui a categoria de cada produto
-    const products = await prisma.products.findMany({
-      where: {
-        id: {
-          in: productIds,
-        },
-      },
-      include: {
-        Category: true,
-      },
-    });
+    const idsProdutos = req.body;
+    const produtos = await buscarGrupos(prisma, idsProdutos);
 
-    // Se nenhum produto for encontrado, retorna um erro 404
-    if (!products.length) {
+    if (!produtos.length) {
       return res
         .status(404)
         .json({ error: "Nenhum produto achado para seus IDs" });
     }
 
-    // Inicializando um array para armazenar os produtos adicionais
-    let additionalProducts = [];
-    // Para cada ID no corpo da requisição
-    for (let id of productIds) {
-      // Encontrando o produto correspondente
-      const product = products.find((product) => product.id === id);
-      // Se o produto existir e tiver uma categoria
-      if (product && product.Category) {
-        // Buscando os produtos em promoção que estão na mesma categoria e localização
-        const promoProducts = await prisma.products.findMany({
-          where: {
-            Category: {
-              id: product.Category.id,
-              localization: product.Category.localization,
-            },
-            discount_percentage: {
-              gt: 0,
-            },
-            id: {
-              notIn: productIds,
-            },
-          },
-          include: {
-            Category: true,
-          },
-        });
-        // Adicionando os produtos em promoção ao array de produtos adicionais
-        additionalProducts = [...additionalProducts, ...promoProducts];
-      }
-    }
+    const produtosAdicionais = await buscarProdutosAdicionais(
+      prisma,
+      produtos,
+      idsProdutos
+    );
+    const todosProdutos = [...produtos, ...produtosAdicionais];
+    const produtosAgrupados = agruparProdutos(todosProdutos, idsProdutos);
 
-    // Combinando os produtos selecionados e os produtos adicionais
-    const allProducts = [...products, ...additionalProducts];
-
-    // Agrupando os produtos por categoria e localização
-    const groupedProducts = allProducts.reduce((grouped, product) => {
-      // Criando a chave para o agrupamento
-      const key = product.Category
-        ? `Categoria ${product.Category.id} - Corredor ${product.Category.localization}`
-        : "Sem categoria";
-      // Se a chave ainda não existir no objeto agrupado, cria um novo objeto para ela
-      if (!grouped[key]) {
-        grouped[key] = { selecionado: [], promoção: [] };
-      }
-      // Se o produto estiver entre os produtos selecionados, adiciona ao grupo 'selecionado'
-      if (productIds.includes(product.id)) {
-        grouped[key].selecionado.push(product);
-      } else {
-        // Caso contrário, adiciona ao grupo 'promoção'
-        grouped[key].promoção.push(product);
-      }
-      return grouped;
-    }, {});
-
-    // Enviando os produtos agrupados como resposta
-    res.json(groupedProducts);
+    res.json(produtosAgrupados);
   } catch (error) {
-    // Se ocorrer um erro, registra o erro no console e envia uma mensagem de erro genérica
     console.error(error);
     res.status(500).json({ error: "Um erro ocorreu durante o seu request." });
+  }
+});
+
+// Rota para cadastrar um usuário
+app.post("/register", async (req, res) => {
+  const rodadasSalt = 10;
+  const { name: nome, email, password: senha } = req.body;
+
+  try {
+    verificarCamposObrigatorios(nome, email, senha);
+    await verificarUsuarioExistente(prisma, email);
+    const senhaCriptografada = await criptografarSenha(senha, rodadasSalt);
+    const novoUsuario = await criarNovoUsuario(
+      prisma,
+      nome,
+      email,
+      senhaCriptografada
+    );
+    res.status(201).json(novoUsuario);
+  } catch (error) {
+    console.error(error);
+    res.status(500).send(error.message);
+  }
+});
+
+// Rota para logar um usuário
+app.post("/login", async (req, res) => {
+  const { email, password: senha } = req.body;
+
+  try {
+    verificarCamposObrigatoriosLogin(email, senha);
+    const usuario = await buscarUsuario(prisma, email);
+    await validarSenha(senha, usuario.password);
+    res.status(200).send("Login bem-sucedido!");
+  } catch (error) {
+    console.error(error);
+    res.status(500).send(error.message);
   }
 });
 
