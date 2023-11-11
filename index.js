@@ -37,7 +37,7 @@ app.get("/products", async (req, res) => {
     if (classIds.length > 0) {
       products = await prisma.products.findMany({
         where: {
-          class: {
+          category: {
             in: classIds,
           },
         },
