@@ -112,11 +112,18 @@ const buscarProdutosAdicionais = async (prisma, produtos, idsProdutos) => {
 // Função para agrupar produtos
 const agruparProdutos = (todosProdutos, idsProdutos) => {
   return todosProdutos.reduce((agrupados, produto) => {
-    const chave = produto.Category
-      ? `${produto.Category.localization}`
-      : "Sem categoria";
+    const chave =
+      produto.Category && produto.AisleNumber
+        ? `${produto.AisleNumber}-${produto.Category.localization}`
+        : produto.AisleNumber
+        ? `${produto.AisleNumber}-Sem categoria`
+        : "Sem corredor e sem categoria";
     if (!agrupados[chave]) {
-      agrupados[chave] = { products: [], promotions: [] };
+      agrupados[chave] = {
+        AisleNumber: produto.AisleNumber,
+        products: [],
+        promotions: [],
+      };
     }
     if (idsProdutos.includes(produto.id)) {
       agrupados[chave].products.push(produto);
