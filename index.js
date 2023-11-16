@@ -116,7 +116,7 @@ const agruparProdutos = (todosProdutos, idsProdutos) => {
       ? `Categoria ${produto.Category.id} - Corredor ${produto.Category.localization}`
       : "Sem categoria";
     if (!agrupados[chave]) {
-      agrupados[chave] = { selecionado: [], promoção: [] };
+      agrupados[chave] = { products: [], promotions: [] };
     }
     if (idsProdutos.includes(produto.id)) {
       agrupados[chave].selecionado.push(produto);
