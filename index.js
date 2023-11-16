@@ -113,7 +113,7 @@ const buscarProdutosAdicionais = async (prisma, produtos, idsProdutos) => {
 const agruparProdutos = (todosProdutos, idsProdutos) => {
   return todosProdutos.reduce((agrupados, produto) => {
     const chave = produto.Category
-      ? "Corredor ${produto.Category.localization}"
+      ? "${produto.Category.localization}"
       : "Sem categoria";
     if (!agrupados[chave]) {
       agrupados[chave] = { products: [], promotions: [] };
