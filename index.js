@@ -98,11 +98,6 @@ const buscarProdutosAdicionais = async (prisma, produtos, idsProdutos) => {
   for (let id of idsProdutos) {
     const produto = produtos.find((produto) => produto.id === id);
     if (produto && produto.Category) {
-      const produtosPromocao = await buscarProdutosPromocao(
-        prisma,
-        produto,
-        idsProdutos
-      );
       produtosAdicionais = [...produtosAdicionais, ...produtosPromocao];
     }
   }
@@ -111,19 +106,12 @@ const buscarProdutosAdicionais = async (prisma, produtos, idsProdutos) => {
 
 // Função para agrupar produtos
 const agruparProdutos = (todosProdutos, idsProdutos) => {
-  return todosProdutos.reduce((agrupados, produto) => {
-    const chave =
-      produto.Category && produto.AisleNumber
-        ? `${produto.AisleNumber}-${produto.Category.localization}`
-        : produto.AisleNumber
-        ? `${produto.AisleNumber}-Sem categoria`
-        : "Sem corredor e sem categoria";
+  const agrupados = todosProdutos.reduce((agrupados, produto) => {
+    const chave = produto.Category
+      ? produto.Category.localization
+      : "Sem categoria";
     if (!agrupados[chave]) {
-      agrupados[chave] = {
-        AisleNumber: produto.AisleNumber,
-        products: [],
-        promotions: [],
-      };
+      agrupados[chave] = { AisleNumber: chave, products: [], promotions: [] };
     }
     if (idsProdutos.includes(produto.id)) {
       agrupados[chave].products.push(produto);
@@ -132,6 +120,9 @@ const agruparProdutos = (todosProdutos, idsProdutos) => {
     }
     return agrupados;
   }, {});
+
+  // Converte o objeto agrupado em um array
+  return Object.values(agrupados);
 };
 
 // Função para verificar se os campos obrigatórios estão presentes
