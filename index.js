@@ -98,6 +98,11 @@ const buscarProdutosAdicionais = async (prisma, produtos, idsProdutos) => {
   for (let id of idsProdutos) {
     const produto = produtos.find((produto) => produto.id === id);
     if (produto && produto.Category) {
+      const produtosPromocao = await buscarProdutosPromocao(
+        prisma,
+        produto,
+        idsProdutos
+      );
       produtosAdicionais = [...produtosAdicionais, ...produtosPromocao];
     }
   }
