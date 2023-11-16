@@ -119,9 +119,9 @@ const agruparProdutos = (todosProdutos, idsProdutos) => {
       agrupados[chave] = { products: [], promotions: [] };
     }
     if (idsProdutos.includes(produto.id)) {
-      agrupados[chave].selecionado.push(produto);
+      agrupados[chave].products.push(produto);
     } else {
-      agrupados[chave].promoção.push(produto);
+      agrupados[chave].promotions.push(produto);
     }
     return agrupados;
   }, {});
