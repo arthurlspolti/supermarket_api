@@ -240,8 +240,17 @@ const adicionarProduto = async (
   base_price,
   discount_percentage,
   image_url
- ) => {
+) => {
   try {
+    const categoryExists = await prisma.category.findUnique({
+      where: { id: category },
+    });
+    if (!categoryExists) {
+      return {
+        status: 400,
+        message: "A categoria informada não existe no banco de dados.",
+      };
+    }
     const novoProduto = await prisma.products.create({
       data: {
         name: name,
@@ -251,29 +260,31 @@ const adicionarProduto = async (
         image_url: image_url,
       },
     });
-    return novoProduto;
+    return {
+      status: 201,
+      message: "Produto adicionado com sucesso!",
+      data: novoProduto,
+    };
   } catch (error) {
     console.error(error);
+    return {
+      status: 500,
+      message: "Erro ao adicionar produto ao banco de dados.",
+    };
   }
- };
- 
- app.post("/products", async (req, res) => {
+};
+app.post("/products", async (req, res) => {
   const { name, category, base_price, discount_percentage, image_url } =
     req.body;
-  try {
-    const novoProduto = await adicionarProduto(
-      name,
-      category,
-      base_price,
-      discount_percentage,
-      image_url
-    );
-    res.status(201).json(novoProduto);
-  } catch (error) {
-    console.error(error);
-    res.status(500).send("Erro ao adicionar produto ao banco de dados");
-  }
- });
+  const result = await adicionarProduto(
+    name,
+    category,
+    base_price,
+    discount_percentage,
+    image_url
+  );
+  res.status(result.status).json(result);
+});
 
 // Rota para mostrar todos os produtos com promoção no banco
 app.get("/promotions", async (req, res) => {
