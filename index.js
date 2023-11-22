@@ -232,6 +232,42 @@ app.get("/products", async (req, res) => {
   }
 });
 
+const adicionarProduto = async (prisma, nome, classe, preco, desconto, url) => {
+  try {
+    const novoProduto = await prisma.Products.create({
+      data: {
+        name: nome,
+        category: classe,
+        base_price: preco,
+        discount_percentage: desconto,
+        image_url: url,
+      },
+    });
+    return novoProduto;
+  } catch {
+    console.error(error);
+  }
+};
+
+app.post("/products", async (req, res) => {
+  const { nome, classe, preco, desconto, url } = req.body;
+
+  try {
+    const novoProduto = await adicionarProduto(
+      prisma,
+      nome,
+      classe,
+      preco,
+      desconto,
+      url
+    );
+    res.status(201).json(novoProduto);
+  } catch (error) {
+    console.error(error);
+    res.status(500).send("Erro ao adicionar produto ao banco de dados");
+  }
+});
+
 // Rota para mostrar todos os produtos com promoção no banco
 app.get("/promotions", async (req, res) => {
   try {
