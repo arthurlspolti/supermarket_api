@@ -232,15 +232,21 @@ app.get("/products", async (req, res) => {
   }
 });
 
-const adicionarProduto = async (prisma, nome, classe, preco, desconto, url) => {
+const adicionarProduto = async (
+  name,
+  category,
+  base_price,
+  discount_percentage,
+  image_url
+) => {
   try {
     const novoProduto = await prisma.Products.create({
       data: {
-        name: nome,
-        category: classe,
-        base_price: preco,
-        discount_percentage: desconto,
-        image_url: url,
+        name: name,
+        category: category,
+        base_price: base_price,
+        discount_percentage: discount_percentage,
+        image_url: image_url,
       },
     });
     return novoProduto;
@@ -250,16 +256,17 @@ const adicionarProduto = async (prisma, nome, classe, preco, desconto, url) => {
 };
 
 app.post("/products", async (req, res) => {
-  const { nome, classe, preco, desconto, url } = req.body;
+  const { name, category, base_price, discount_percentage, image_url } =
+    req.body;
 
   try {
     const novoProduto = await adicionarProduto(
       prisma,
-      nome,
-      classe,
-      preco,
-      desconto,
-      url
+      name,
+      category,
+      base_price,
+      discount_percentage,
+      image_url
     );
     res.status(201).json(novoProduto);
   } catch (error) {
