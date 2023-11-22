@@ -242,7 +242,7 @@ const adicionarProduto = async (
   image_url
 ) => {
   try {
-    const novoProduto = await prisma.Products.create({
+    const novoProduto = await prisma.products.create({
       data: {
         name: name,
         category: category,
@@ -252,7 +252,7 @@ const adicionarProduto = async (
       },
     });
     return novoProduto;
-  } catch {
+  } catch (error) {
     console.error(error);
   }
 };
