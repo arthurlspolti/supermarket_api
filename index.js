@@ -445,6 +445,7 @@ const buscarUsuarioPhone = async (prisma, telefone) => {
 };
 
 app.put("/users", async (req, res) => {
+  const rodadasSalt = 10;
   const {
     id,
     name: nome,
