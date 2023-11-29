@@ -485,6 +485,42 @@ app.put("/users", async (req, res) => {
   }
 });
 
+app.put("/products", async (req, res) => {
+  const { id, name, category, base_price, discount_percentage, image_url } =
+    req.body;
+  try {
+    if (!id) {
+      throw new Error("O campo id é obrigatório");
+    }
+    const produtoExistente = await prisma.products.findUnique({
+      where: {
+        id: Number(id),
+      },
+    });
+    if (!produtoExistente) {
+      throw new Error("Produto não encontrado");
+    }
+    const produtoAtualizado = await prisma.products.update({
+      where: {
+        id: Number(id),
+      },
+      data: {
+        name: name,
+        category: category ? Number(category) : undefined,
+        base_price: base_price ? Number(base_price) : undefined,
+        discount_percentage: discount_percentage
+          ? Number(discount_percentage)
+          : undefined,
+        image_url: image_url,
+      },
+    });
+    res.status(200).json(produtoAtualizado);
+  } catch (error) {
+    console.error(error);
+    res.status(500).send(error.message);
+  }
+});
+
 // Iniciar o servidor
 app.listen(3000, () =>
   console.log("Servidor rodando na porta 3000, no http://localhost:3000")
