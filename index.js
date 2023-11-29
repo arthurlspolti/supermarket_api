@@ -444,6 +444,46 @@ const buscarUsuarioPhone = async (prisma, telefone) => {
   return usuario;
 };
 
+app.put("/users", async (req, res) => {
+  const {
+    id,
+    name: nome,
+    email,
+    password: senha,
+    phoneNumber: telefone,
+  } = req.body;
+
+  try {
+    if (!id || !nome || !email || !senha) {
+      throw new Error("Os campos id, nome, email e senha são obrigatórios");
+    }
+    const usuarioExistente = await prisma.users.findUnique({
+      where: {
+        id: Number(id),
+      },
+    });
+    if (!usuarioExistente) {
+      throw new Error("Usuário não encontrado");
+    }
+    const senhaCriptografada = await criptografarSenha(senha, rodadasSalt);
+    const usuarioAtualizado = await prisma.users.update({
+      where: {
+        id: Number(id),
+      },
+      data: {
+        name: nome,
+        email: email,
+        password: senhaCriptografada,
+        phone: telefone ? Number(telefone) : undefined,
+      },
+    });
+    res.status(200).json(usuarioAtualizado);
+  } catch (error) {
+    console.error(error);
+    res.status(500).send(error.message);
+  }
+});
+
 // Iniciar o servidor
 app.listen(3000, () =>
   console.log("Servidor rodando na porta 3000, no http://localhost:3000")
