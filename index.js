@@ -339,6 +339,7 @@ app.post("/register", async (req, res) => {
       email,
       senhaCriptografada
     );
+
     res.status(201).json(novoUsuario);
   } catch (error) {
     console.error(error);
@@ -354,7 +355,7 @@ app.post("/login", async (req, res) => {
     verificarCamposObrigatoriosLogin(email, senha);
     const usuario = await buscarUsuario(prisma, email);
     await validarSenha(senha, usuario.password);
-    res.status(200).send("Login bem-sucedido!");
+    res.status(200).json(usuario);
   } catch (error) {
     console.error(error);
     res.status(500).send(error.message);
