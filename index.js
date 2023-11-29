@@ -324,43 +324,125 @@ app.post("/shoppingroutes", async (req, res) => {
   }
 });
 
-// Rota para cadastrar um usuário
 app.post("/register", async (req, res) => {
   const rodadasSalt = 10;
-  const { name: nome, email, password: senha } = req.body;
+  const {
+    name: nome,
+    email,
+    password: senha,
+    phoneNumber: telefone,
+  } = req.body;
 
   try {
-    verificarCamposObrigatorios(nome, email, senha);
-    await verificarUsuarioExistente(prisma, email);
-    const senhaCriptografada = await criptografarSenha(senha, rodadasSalt);
-    const novoUsuario = await criarNovoUsuario(
-      prisma,
-      nome,
-      email,
-      senhaCriptografada
-    );
-
-    res.status(201).json(novoUsuario);
+    if (email && !telefone) {
+      verificarCamposObrigatorios(nome, email, senha);
+      await verificarUsuarioExistente(prisma, email);
+      const senhaCriptografada = await criptografarSenha(senha, rodadasSalt);
+      const novoUsuario = await criarNovoUsuario(
+        prisma,
+        nome,
+        email,
+        senhaCriptografada
+      );
+      res.status(201).json(novoUsuario);
+    } else if (!email && telefone) {
+      verificarCamposObrigatoriosPhone(nome, telefone, senha);
+      await verificarUsuarioExistentePhone(prisma, telefone);
+      const senhaCriptografada = await criptografarSenha(senha, rodadasSalt);
+      const novoUsuario = await criarNovoUsuarioPhone(
+        prisma,
+        nome,
+        telefone,
+        senhaCriptografada
+      );
+      res.status(201).json(novoUsuario);
+    } else {
+      throw new Error("Por favor, forneça um email ou um número de telefone");
+    }
   } catch (error) {
     console.error(error);
     res.status(500).send(error.message);
   }
 });
+
+const verificarCamposObrigatoriosPhone = (nome, telefone, senha) => {
+  if (!nome || !telefone || !senha) {
+    throw new Error("Os campos nome, telefone e senha são obrigatórios");
+  }
+  if (!/^\d{11}$/.test(telefone)) {
+    throw new Error("O telefone deve ter 11 dígitos numéricos");
+  }
+};
+
+const verificarUsuarioExistentePhone = async (prisma, telefone) => {
+  const usuarioExistente = await prisma.users.findUnique({
+    where: {
+      phone: telefone,
+    },
+  });
+  if (usuarioExistente) {
+    throw new Error("Já existe um usuário com este telefone");
+  }
+};
+
+const criarNovoUsuarioPhone = async (
+  prisma,
+  nome,
+  telefone,
+  senhaCriptografada
+) => {
+  return await prisma.users.create({
+    data: {
+      name: nome,
+      phone: telefone,
+      password: senhaCriptografada,
+    },
+  });
+};
 
 // Rota para logar um usuário
 app.post("/login", async (req, res) => {
-  const { email, password: senha } = req.body;
+  const { email, password: senha, phoneNumber: telefone } = req.body;
 
   try {
-    verificarCamposObrigatoriosLogin(email, senha);
-    const usuario = await buscarUsuario(prisma, email);
-    await validarSenha(senha, usuario.password);
-    res.status(200).json(usuario);
+    if (email && !telefone) {
+      verificarCamposObrigatoriosLogin(email, senha);
+      const usuario = await buscarUsuario(prisma, email);
+      await validarSenha(senha, usuario.password);
+      res.status(200).json(usuario);
+    } else if (!email && telefone) {
+      verificarCamposObrigatoriosLoginPhone(telefone, senha);
+      const usuario = await buscarUsuarioPhone(prisma, telefone);
+      await validarSenha(senha, usuario.password);
+      res.status(200).json(usuario);
+    } else {
+      throw new Error("Por favor, forneça um email ou um número de telefone");
+    }
   } catch (error) {
     console.error(error);
     res.status(500).send(error.message);
   }
 });
+
+const verificarCamposObrigatoriosLoginPhone = (telefone, senha) => {
+  if (!telefone || !senha) {
+    throw new Error("Os campos telefone e senha são obrigatórios");
+  }
+};
+
+const buscarUsuarioPhone = async (prisma, telefone) => {
+  const usuario = await prisma.users.findUnique({
+    where: {
+      phone: telefone,
+    },
+  });
+
+  if (!usuario) {
+    throw new Error("Telefone ou senha inválidos");
+  }
+
+  return usuario;
+};
 
 // Iniciar o servidor
 app.listen(3000, () =>
