@@ -7,6 +7,247 @@ const app = express();
 app.use(express.json());
 app.use(cors());
 
+// Rota para puxar todas as classes do banco
+app.get("/classes", async (req, res) => {
+  try {
+    const categorias = await buscarCategorias(prisma);
+    res.json(categorias);
+  } catch (error) {
+    res.status(500).send(error.message);
+  }
+});
+
+// Rota para mostrar todos os produtos do banco
+app.get("/products", async (req, res) => {
+  const { classes } = req.query;
+  const idsClasses = classes ? classes.split(",").map(Number) : [];
+
+  try {
+    const produtos = await buscarProdutos(prisma, idsClasses);
+    res.json(produtos);
+  } catch (error) {
+    console.error(error);
+    res.status(500).send("Erro ao buscar produtos");
+  }
+});
+
+app.post("/products", async (req, res) => {
+  const { name, category, base_price, discount_percentage, image_url } =
+    req.body;
+  const result = await adicionarProduto(
+    name,
+    category,
+    base_price,
+    discount_percentage,
+    image_url
+  );
+  res.status(result.status).json(result);
+});
+
+// Rota para mostrar todos os produtos com promoção no banco
+app.get("/promotions", async (req, res) => {
+  try {
+    const promocoes = await buscarPromocoes(prisma);
+    res.json(promocoes);
+  } catch (error) {
+    console.error(error);
+    res.status(500).send(error.message);
+  }
+});
+
+// Rota para mostrar os produtos agrupados por corredores
+app.post("/shoppingroutes", async (req, res) => {
+  try {
+    const idsProdutos = req.body;
+    const produtos = await buscarGrupos(prisma, idsProdutos);
+
+    if (!produtos.length) {
+      return res
+        .status(404)
+        .json({ error: "Nenhum produto achado para seus IDs" });
+    }
+
+    const produtosAdicionais = await buscarProdutosAdicionais(
+      prisma,
+      produtos,
+      idsProdutos
+    );
+    const todosProdutos = [...produtos, ...produtosAdicionais];
+    const produtosAgrupados = agruparProdutos(todosProdutos, idsProdutos);
+
+    res.json(produtosAgrupados);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: "Um erro ocorreu durante o seu request." });
+  }
+});
+
+app.post("/register", async (req, res) => {
+  const rodadasSalt = 10;
+  const {
+    name: nome,
+    email,
+    password: senha,
+    phoneNumber: telefone,
+  } = req.body;
+
+  try {
+    if (email && telefone) {
+      verificarCamposObrigatorios(nome, email, senha);
+      verificarCamposObrigatoriosPhone(nome, telefone, senha);
+      await verificarUsuarioExistente(prisma, email);
+      await verificarUsuarioExistentePhone(prisma, telefone);
+      const senhaCriptografada = await criptografarSenha(senha, rodadasSalt);
+      const novoUsuario = await criarNovoUsuarioComTelefone(
+        prisma,
+        nome,
+        email,
+        telefone,
+        senhaCriptografada
+      );
+      res.status(201).json(novoUsuario);
+    } else if (email && !telefone) {
+      verificarCamposObrigatorios(nome, email, senha);
+      await verificarUsuarioExistente(prisma, email);
+      const senhaCriptografada = await criptografarSenha(senha, rodadasSalt);
+      const novoUsuario = await criarNovoUsuario(
+        prisma,
+        nome,
+        email,
+        senhaCriptografada
+      );
+      res.status(201).json(novoUsuario);
+    } else if (!email && telefone) {
+      verificarCamposObrigatoriosPhone(nome, telefone, senha);
+      await verificarUsuarioExistentePhone(prisma, telefone);
+      const senhaCriptografada = await criptografarSenha(senha, rodadasSalt);
+      const novoUsuario = await criarNovoUsuarioPhone(
+        prisma,
+        nome,
+        telefone,
+        senhaCriptografada
+      );
+      res.status(201).json(novoUsuario);
+    } else {
+      throw new Error("Por favor, forneça um email ou um número de telefone");
+    }
+  } catch (error) {
+    console.error(error);
+    res.status(500).send(error.message);
+  }
+});
+
+// Rota para logar um usuário
+app.post("/login", async (req, res) => {
+  const { email, password: senha, phoneNumber: telefone } = req.body;
+
+  try {
+    if (email && telefone) {
+      verificarCamposObrigatoriosLogin(email, senha);
+      verificarCamposObrigatoriosLoginPhone(telefone, senha);
+      const usuario = await buscarUsuario(prisma, email);
+      const usuarioPhone = await buscarUsuarioPhone(prisma, telefone);
+      if (usuario.id !== usuarioPhone.id) {
+        throw new Error("Email e telefone não correspondem ao mesmo usuário");
+      }
+      await validarSenha(senha, usuario.password);
+      res.status(200).json(usuario);
+    } else if (email && !telefone) {
+      verificarCamposObrigatoriosLogin(email, senha);
+      const usuario = await buscarUsuario(prisma, email);
+      await validarSenha(senha, usuario.password);
+      res.status(200).json(usuario);
+    } else if (!email && telefone) {
+      verificarCamposObrigatoriosLoginPhone(telefone, senha);
+      const usuario = await buscarUsuarioPhone(prisma, telefone);
+      await validarSenha(senha, usuario.password);
+      res.status(200).json(usuario);
+    } else {
+      throw new Error("Por favor, forneça um email ou um número de telefone");
+    }
+  } catch (error) {
+    console.error(error);
+    res.status(500).send(error.message);
+  }
+});
+
+app.put("/users", async (req, res) => {
+  const rodadasSalt = 10;
+  const {
+    id,
+    name: nome,
+    email,
+    password: senha,
+    phoneNumber: telefone,
+  } = req.body;
+
+  try {
+    if (!id || !nome || !email || !senha) {
+      throw new Error("Os campos id, nome, email e senha são obrigatórios");
+    }
+    const usuarioExistente = await prisma.users.findUnique({
+      where: {
+        id: Number(id),
+      },
+    });
+    if (!usuarioExistente) {
+      throw new Error("Usuário não encontrado");
+    }
+    const senhaCriptografada = await criptografarSenha(senha, rodadasSalt);
+    const usuarioAtualizado = await prisma.users.update({
+      where: {
+        id: Number(id),
+      },
+      data: {
+        name: nome,
+        email: email,
+        password: senhaCriptografada,
+        phone: telefone ? telefone : undefined,
+      },
+    });
+    res.status(200).json(usuarioAtualizado);
+  } catch (error) {
+    console.error(error);
+    res.status(500).send(error.message);
+  }
+});
+
+app.put("/products", async (req, res) => {
+  const { id, name, category, base_price, discount_percentage, image_url } =
+    req.body;
+  try {
+    if (!id) {
+      throw new Error("O campo id é obrigatório");
+    }
+    const produtoExistente = await prisma.products.findUnique({
+      where: {
+        id: Number(id),
+      },
+    });
+    if (!produtoExistente) {
+      throw new Error("Produto não encontrado");
+    }
+    const produtoAtualizado = await prisma.products.update({
+      where: {
+        id: Number(id),
+      },
+      data: {
+        name: name,
+        category: category ? Number(category) : undefined,
+        base_price: base_price ? Number(base_price) : undefined,
+        discount_percentage: discount_percentage
+          ? Number(discount_percentage)
+          : undefined,
+        image_url: image_url,
+      },
+    });
+    res.status(200).json(produtoAtualizado);
+  } catch (error) {
+    console.error(error);
+    res.status(500).send(error.message);
+  }
+});
+
 // Função para buscar categorias
 const buscarCategorias = async (prisma) => {
   try {
@@ -210,29 +451,25 @@ const validarSenha = async (senha, senhaCriptografada) => {
   }
 };
 
-// Rota para puxar todas as classes do banco
-app.get("/classes", async (req, res) => {
-  try {
-    const categorias = await buscarCategorias(prisma);
-    res.json(categorias);
-  } catch (error) {
-    res.status(500).send(error.message);
+const verificarCamposObrigatoriosLoginPhone = (telefone, senha) => {
+  if (!telefone || !senha) {
+    throw new Error("Os campos telefone e senha são obrigatórios");
   }
-});
+};
 
-// Rota para mostrar todos os produtos do banco
-app.get("/products", async (req, res) => {
-  const { classes } = req.query;
-  const idsClasses = classes ? classes.split(",").map(Number) : [];
+const buscarUsuarioPhone = async (prisma, telefone) => {
+  const usuario = await prisma.users.findUnique({
+    where: {
+      phone: telefone,
+    },
+  });
 
-  try {
-    const produtos = await buscarProdutos(prisma, idsClasses);
-    res.json(produtos);
-  } catch (error) {
-    console.error(error);
-    res.status(500).send("Erro ao buscar produtos");
+  if (!usuario) {
+    throw new Error("Telefone ou senha inválidos");
   }
-});
+
+  return usuario;
+};
 
 const adicionarProduto = async (
   name,
@@ -273,111 +510,6 @@ const adicionarProduto = async (
     };
   }
 };
-app.post("/products", async (req, res) => {
-  const { name, category, base_price, discount_percentage, image_url } =
-    req.body;
-  const result = await adicionarProduto(
-    name,
-    category,
-    base_price,
-    discount_percentage,
-    image_url
-  );
-  res.status(result.status).json(result);
-});
-
-// Rota para mostrar todos os produtos com promoção no banco
-app.get("/promotions", async (req, res) => {
-  try {
-    const promocoes = await buscarPromocoes(prisma);
-    res.json(promocoes);
-  } catch (error) {
-    console.error(error);
-    res.status(500).send(error.message);
-  }
-});
-
-// Rota para mostrar os produtos agrupados por corredores
-app.post("/shoppingroutes", async (req, res) => {
-  try {
-    const idsProdutos = req.body;
-    const produtos = await buscarGrupos(prisma, idsProdutos);
-
-    if (!produtos.length) {
-      return res
-        .status(404)
-        .json({ error: "Nenhum produto achado para seus IDs" });
-    }
-
-    const produtosAdicionais = await buscarProdutosAdicionais(
-      prisma,
-      produtos,
-      idsProdutos
-    );
-    const todosProdutos = [...produtos, ...produtosAdicionais];
-    const produtosAgrupados = agruparProdutos(todosProdutos, idsProdutos);
-
-    res.json(produtosAgrupados);
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ error: "Um erro ocorreu durante o seu request." });
-  }
-});
-
-app.post("/register", async (req, res) => {
-  const rodadasSalt = 10;
-  const {
-    name: nome,
-    email,
-    password: senha,
-    phoneNumber: telefone,
-  } = req.body;
-
-  try {
-    if (email && telefone) {
-      verificarCamposObrigatorios(nome, email, senha);
-      verificarCamposObrigatoriosPhone(nome, telefone, senha);
-      await verificarUsuarioExistente(prisma, email);
-      await verificarUsuarioExistentePhone(prisma, telefone);
-      const senhaCriptografada = await criptografarSenha(senha, rodadasSalt);
-      const novoUsuario = await criarNovoUsuarioComTelefone(
-        prisma,
-        nome,
-        email,
-        telefone,
-        senhaCriptografada
-      );
-      res.status(201).json(novoUsuario);
-    } else if (email && !telefone) {
-      verificarCamposObrigatorios(nome, email, senha);
-      await verificarUsuarioExistente(prisma, email);
-      const senhaCriptografada = await criptografarSenha(senha, rodadasSalt);
-      const novoUsuario = await criarNovoUsuario(
-        prisma,
-        nome,
-        email,
-        senhaCriptografada
-      );
-      res.status(201).json(novoUsuario);
-    } else if (!email && telefone) {
-      verificarCamposObrigatoriosPhone(nome, telefone, senha);
-      await verificarUsuarioExistentePhone(prisma, telefone);
-      const senhaCriptografada = await criptografarSenha(senha, rodadasSalt);
-      const novoUsuario = await criarNovoUsuarioPhone(
-        prisma,
-        nome,
-        telefone,
-        senhaCriptografada
-      );
-      res.status(201).json(novoUsuario);
-    } else {
-      throw new Error("Por favor, forneça um email ou um número de telefone");
-    }
-  } catch (error) {
-    console.error(error);
-    res.status(500).send(error.message);
-  }
-});
 
 const criarNovoUsuarioComTelefone = async (
   prisma,
@@ -430,137 +562,6 @@ const criarNovoUsuarioPhone = async (
     },
   });
 };
-
-// Rota para logar um usuário
-app.post("/login", async (req, res) => {
-  const { email, password: senha, phoneNumber: telefone } = req.body;
-
-  try {
-    if (email && telefone) {
-      verificarCamposObrigatoriosLogin(email, senha);
-      verificarCamposObrigatoriosLoginPhone(telefone, senha);
-      const usuario = await buscarUsuario(prisma, email);
-      const usuarioPhone = await buscarUsuarioPhone(prisma, telefone);
-      if (usuario.id !== usuarioPhone.id) {
-        throw new Error("Email e telefone não correspondem ao mesmo usuário");
-      }
-      await validarSenha(senha, usuario.password);
-      res.status(200).json(usuario);
-    } else if (email && !telefone) {
-      verificarCamposObrigatoriosLogin(email, senha);
-      const usuario = await buscarUsuario(prisma, email);
-      await validarSenha(senha, usuario.password);
-      res.status(200).json(usuario);
-    } else if (!email && telefone) {
-      verificarCamposObrigatoriosLoginPhone(telefone, senha);
-      const usuario = await buscarUsuarioPhone(prisma, telefone);
-      await validarSenha(senha, usuario.password);
-      res.status(200).json(usuario);
-    } else {
-      throw new Error("Por favor, forneça um email ou um número de telefone");
-    }
-  } catch (error) {
-    console.error(error);
-    res.status(500).send(error.message);
-  }
-});
-
-const verificarCamposObrigatoriosLoginPhone = (telefone, senha) => {
-  if (!telefone || !senha) {
-    throw new Error("Os campos telefone e senha são obrigatórios");
-  }
-};
-
-const buscarUsuarioPhone = async (prisma, telefone) => {
-  const usuario = await prisma.users.findUnique({
-    where: {
-      phone: telefone,
-    },
-  });
-
-  if (!usuario) {
-    throw new Error("Telefone ou senha inválidos");
-  }
-
-  return usuario;
-};
-
-app.put("/users", async (req, res) => {
-  const rodadasSalt = 10;
-  const {
-    id,
-    name: nome,
-    email,
-    password: senha,
-    phoneNumber: telefone,
-  } = req.body;
-
-  try {
-    if (!id || !nome || !email || !senha) {
-      throw new Error("Os campos id, nome, email e senha são obrigatórios");
-    }
-    const usuarioExistente = await prisma.users.findUnique({
-      where: {
-        id: Number(id),
-      },
-    });
-    if (!usuarioExistente) {
-      throw new Error("Usuário não encontrado");
-    }
-    const senhaCriptografada = await criptografarSenha(senha, rodadasSalt);
-    const usuarioAtualizado = await prisma.users.update({
-      where: {
-        id: Number(id),
-      },
-      data: {
-        name: nome,
-        email: email,
-        password: senhaCriptografada,
-        phone: telefone ? telefone : undefined,
-      },
-    });
-    res.status(200).json(usuarioAtualizado);
-  } catch (error) {
-    console.error(error);
-    res.status(500).send(error.message);
-  }
-});
-
-app.put("/products", async (req, res) => {
-  const { id, name, category, base_price, discount_percentage, image_url } =
-    req.body;
-  try {
-    if (!id) {
-      throw new Error("O campo id é obrigatório");
-    }
-    const produtoExistente = await prisma.products.findUnique({
-      where: {
-        id: Number(id),
-      },
-    });
-    if (!produtoExistente) {
-      throw new Error("Produto não encontrado");
-    }
-    const produtoAtualizado = await prisma.products.update({
-      where: {
-        id: Number(id),
-      },
-      data: {
-        name: name,
-        category: category ? Number(category) : undefined,
-        base_price: base_price ? Number(base_price) : undefined,
-        discount_percentage: discount_percentage
-          ? Number(discount_percentage)
-          : undefined,
-        image_url: image_url,
-      },
-    });
-    res.status(200).json(produtoAtualizado);
-  } catch (error) {
-    console.error(error);
-    res.status(500).send(error.message);
-  }
-});
 
 // Iniciar o servidor
 app.listen(3000, () =>
