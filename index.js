@@ -390,7 +390,7 @@ const criarNovoUsuarioComTelefone = async (
     data: {
       name: nome,
       email: email,
-      phone: Number(telefone),
+      phone: telefone,
       password: senhaCriptografada,
     },
   });
@@ -516,7 +516,7 @@ app.put("/users", async (req, res) => {
         name: nome,
         email: email,
         password: senhaCriptografada,
-        phone: telefone ? Number(telefone) : undefined,
+        phone: telefone ? telefone : undefined,
       },
     });
     res.status(200).json(usuarioAtualizado);
