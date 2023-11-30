@@ -334,7 +334,21 @@ app.post("/register", async (req, res) => {
   } = req.body;
 
   try {
-    if (email && !telefone) {
+    if (email && telefone) {
+      verificarCamposObrigatorios(nome, email, senha);
+      verificarCamposObrigatoriosPhone(nome, telefone, senha);
+      await verificarUsuarioExistente(prisma, email);
+      await verificarUsuarioExistentePhone(prisma, telefone);
+      const senhaCriptografada = await criptografarSenha(senha, rodadasSalt);
+      const novoUsuario = await criarNovoUsuarioComTelefone(
+        prisma,
+        nome,
+        email,
+        telefone,
+        senhaCriptografada
+      );
+      res.status(201).json(novoUsuario);
+    } else if (email && !telefone) {
       verificarCamposObrigatorios(nome, email, senha);
       await verificarUsuarioExistente(prisma, email);
       const senhaCriptografada = await criptografarSenha(senha, rodadasSalt);
@@ -364,6 +378,23 @@ app.post("/register", async (req, res) => {
     res.status(500).send(error.message);
   }
 });
+
+const criarNovoUsuarioComTelefone = async (
+  prisma,
+  nome,
+  email,
+  telefone,
+  senhaCriptografada
+) => {
+  return await prisma.users.create({
+    data: {
+      name: nome,
+      email: email,
+      phone: Number(telefone),
+      password: senhaCriptografada,
+    },
+  });
+};
 
 const verificarCamposObrigatoriosPhone = (nome, telefone, senha) => {
   if (!nome || !telefone || !senha) {
@@ -405,7 +436,17 @@ app.post("/login", async (req, res) => {
   const { email, password: senha, phoneNumber: telefone } = req.body;
 
   try {
-    if (email && !telefone) {
+    if (email && telefone) {
+      verificarCamposObrigatoriosLogin(email, senha);
+      verificarCamposObrigatoriosLoginPhone(telefone, senha);
+      const usuario = await buscarUsuario(prisma, email);
+      const usuarioPhone = await buscarUsuarioPhone(prisma, telefone);
+      if (usuario.id !== usuarioPhone.id) {
+        throw new Error("Email e telefone não correspondem ao mesmo usuário");
+      }
+      await validarSenha(senha, usuario.password);
+      res.status(200).json(usuario);
+    } else if (email && !telefone) {
       verificarCamposObrigatoriosLogin(email, senha);
       const usuario = await buscarUsuario(prisma, email);
       await validarSenha(senha, usuario.password);
