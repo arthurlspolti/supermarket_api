@@ -7,16 +7,6 @@ const app = express();
 app.use(express.json());
 app.use(cors());
 
-// Rota para puxar todas as classes do banco
-app.get("/classes", async (req, res) => {
-  try {
-    const categorias = await buscarCategorias(prisma);
-    res.json(categorias);
-  } catch (error) {
-    res.status(500).send(error.message);
-  }
-});
-
 // Rota para mostrar todos os produtos do banco
 app.get("/products", async (req, res) => {
   const { classes } = req.query;
@@ -253,20 +243,6 @@ app.put("/products", async (req, res) => {
     res.status(500).send(error.message);
   }
 });
-
-// Função para buscar categorias
-const buscarCategorias = async (prisma) => {
-  try {
-    return await prisma.Category.findMany({
-      orderBy: {
-        name: "asc",
-      },
-    });
-  } catch (error) {
-    console.error(error);
-    throw new Error("Erro ao buscar categorias");
-  }
-};
 
 // Função para buscar produtos
 const buscarProdutos = async (prisma, idsClasses) => {

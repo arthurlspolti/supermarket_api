@@ -2,7 +2,8 @@
   "name": "supermarket_api",
   "version": "1.0.0",
   "description": "a api",
-  "main": "index.js",
+  "main": "src/app/app.js",
+  "type": "module",
   "scripts": {
     "start": "prisma generate && node index.js",
     "test": "jest",
