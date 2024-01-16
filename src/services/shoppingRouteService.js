@@ -1,4 +1,5 @@
 import ShoppingRoute from "../models/shoppingRoute.js";
+import prisma from "../lib/prisma.js";
 
 // Função para buscar produtos em promoção
 const buscarProdutosAdicionais = async (produtos, idsProdutos) => {
@@ -20,6 +21,28 @@ const buscarProdutosAdicionais = async (produtos, idsProdutos) => {
     }
   }
   return produtosAdicionais;
+};
+
+// Função para buscar produtos em promoção
+const buscarProdutosPromocao = async (produto, idsProdutos, idsAdicionais) => {
+  const produtosPromocao = await prisma.products.findMany({
+    where: {
+      Category: {
+        id: produto.Category.id,
+        localization: produto.Category.localization,
+      },
+      discount_percentage: {
+        gt: 0,
+      },
+      id: {
+        notIn: [...idsProdutos, ...idsAdicionais], // Verifica se o produto já foi adicionado
+      },
+    },
+    include: {
+      Category: true,
+    },
+  });
+  return produtosPromocao;
 };
 
 // Função para agrupar produtos
