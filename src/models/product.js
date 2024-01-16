@@ -21,6 +21,29 @@ class Product {
       });
     }
   }
+
+  static async createProduct(data) {
+    return await prisma.products.create({
+      data,
+    });
+  }
+
+  static async findUnique(id) {
+    return await prisma.products.findUnique({
+      where: {
+        id: Number(id),
+      },
+    });
+  }
+
+  static async updateProduct(id, data) {
+    return await prisma.products.update({
+      where: {
+        id: Number(id),
+      },
+      data,
+    });
+  }
 }
 
 export default Product;
