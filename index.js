@@ -61,19 +61,25 @@ app.post("/shoppingroutes", async (req, res) => {
     const idsProdutos = req.body;
     const produtos = await buscarGrupos(prisma, idsProdutos);
 
-    if (!produtos.length) {
-      return res
-        .status(404)
-        .json({ error: "Nenhum produto achado para seus IDs" });
-    }
-
     const produtosAdicionais = await buscarProdutosAdicionais(
       prisma,
       produtos,
       idsProdutos
     );
     const todosProdutos = [...produtos, ...produtosAdicionais];
-    const produtosAgrupados = agruparProdutos(todosProdutos, idsProdutos);
+
+    // Buscar todas as categorias
+    const todasCategorias = await prisma.category.findMany({
+      orderBy: {
+        localization: "asc",
+      },
+    });
+
+    const produtosAgrupados = agruparProdutos(
+      todosProdutos,
+      idsProdutos,
+      todasCategorias
+    );
 
     res.json(produtosAgrupados);
   } catch (error) {
@@ -364,21 +370,28 @@ const buscarProdutosPromocao = async (
 };
 
 // Função para agrupar produtos
-const agruparProdutos = (todosProdutos, idsProdutos) => {
-  const agrupados = todosProdutos.reduce((agrupados, produto) => {
+const agruparProdutos = (todosProdutos, idsProdutos, todasCategorias) => {
+  const agrupados = {};
+
+  // Inicializar todas as categorias com listas de produtos vazias
+  todasCategorias.forEach((categoria) => {
+    agrupados[categoria.localization] = {
+      AisleNumber: categoria.localization,
+      products: [],
+      promotions: [],
+    };
+  });
+
+  todosProdutos.forEach((produto) => {
     const chave = produto.Category
       ? produto.Category.localization
       : "Sem categoria";
-    if (!agrupados[chave]) {
-      agrupados[chave] = { AisleNumber: chave, products: [], promotions: [] };
-    }
     if (idsProdutos.includes(produto.id)) {
       agrupados[chave].products.push(produto);
     } else {
       agrupados[chave].promotions.push(produto);
     }
-    return agrupados;
-  }, {});
+  });
 
   // Converte o objeto agrupado em um array
   return Object.values(agrupados);
