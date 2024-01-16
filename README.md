@@ -32,4 +32,4 @@ Este projeto é uma API RESTful construída com Node.js e Prisma que permite aos
 
 ## Desenvolvido por
 
-Desenvolvido por @[arthurlspolti](https://github.com/arthurlspolti)
+Desenvolvido por [@arthurlspolti](https://github.com/arthurlspolti)
