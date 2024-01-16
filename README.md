@@ -1,4 +1,4 @@
-# Nome do Projeto
+# Supermarket API
 
 Este projeto é uma API RESTful construída com Node.js e Prisma que permite aos usuários gerenciar produtos e categorias em um banco de dados.
 
@@ -32,4 +32,4 @@ Este projeto é uma API RESTful construída com Node.js e Prisma que permite aos
 
 ## Desenvolvido por
 
-Desenvolvido por @arthurlspolti
+Desenvolvido por @[arthurlspolti](https://github.com/arthurlspolti)
