@@ -1,6 +1,14 @@
 import prisma from "../lib/prisma.js";
 
 class User {
+  static async findUnique(id) {
+    return await prisma.users.findUnique({
+      where: {
+        id: Number(id),
+      },
+    });
+  }
+
   static async findUniqueEmail(email) {
     return await prisma.users.findUnique({
       where: {

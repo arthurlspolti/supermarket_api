@@ -62,6 +62,20 @@ const userService = {
       throw new Error("Usuário não encontrado");
     }
 
+    if (email) {
+      const existingUser = await User.findUniqueEmail(email);
+      if (existingUser) {
+        throw new Error("Já existe um usuário com este email");
+      }
+    }
+
+    if (phone) {
+      const existingUser = await User.findUniquePhone(phone);
+      if (existingUser) {
+        throw new Error("Já existe um usuário com este telefone");
+      }
+    }
+
     const hashedPassword = await bcrypt.hash(password, saltRounds);
     const updatedUser = await User.updateUser(id, {
       name,
